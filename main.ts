@@ -1,14 +1,25 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-
-// Remember to rename these classes and interfaces!
+import {
+	App,
+	Editor,
+	MarkdownView,
+	Modal,
+	Notice,
+	Plugin,
+	PluginSettingTab,
+	Setting,
+} from "obsidian";
 
 interface MyPluginSettings {
-	mySetting: string;
+	secret: string;
+	HeadingLevel: number;
+	HeadingName: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
+	secret: "default",
+	HeadingLevel: 1,
+	HeadingName: "Dokumentation",
+};
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
@@ -16,134 +27,98 @@ export default class MyPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		  
+		// Create an icon in the left ribbon
+		const ribbonIconEl = this.addRibbonIcon(
+			"pdf-file",
+			"Summarize current file",
+			async () => {
+				await this.handleSummarizeFile();
+			}
+		);
+		ribbonIconEl.addClass("my-plugin-ribbon-class");
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('pdf-file', 'Summarize current file', async (evt: MouseEvent) => {
-			await handleSummarizeFile(this.app);
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
+		// Add a status bar item
 		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Found a diary');
+		statusBarItemEl.setText("Found a diary");
 
-
+		// Add a command to summarize the file
 		this.addCommand({
 			id: "summarize-file",
 			name: "Summarize File",
 			callback: async () => {
-				await handleSummarizeFile(this.app);
-			}
-		});
-		
-		async function handleSummarizeFile(app: App) {
-			const file = app.workspace.getActiveFile();
-			if (!file) {
-				new Notice("No active file found!");
-				return;
-			}
-		
-			try {
-				const content = await app.vault.read(file);
-				const documentationContent = summarizeFile(content);
-		
-				if (documentationContent.length > 0) {
-					new Notice(documentationContent);
-				} else {
-					new Notice("No Dokumentation section found in this file.");
-				}
-			} catch (err) {
-				new Notice("Error reading file: " + err.message);
-				console.error(err);
-			}
-		}
-		
-		function summarizeFile(content: string) {
-			const lines = content.split('\n');
-			let inSection = false;
-			let sectionContent = [];
-		
-			for (const line of lines) {
-				if (line.startsWith('# Dokumentation')) {
-					inSection = true;
-					continue;
-				}
-		
-				if (inSection) {
-					if (line.startsWith('# ')) break;
-					sectionContent.push(line.trim());
-				}
-			}
-			
-			return sectionContent.join('\n');
-		}
-		
-		  		
-				
-		/*
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
+				await this.handleSummarizeFile();
+			},
 		});
 
-		*/
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
+		// Register settings tab
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
+		// Register a global event listener
+		this.registerDomEvent(document, "click", (evt: MouseEvent) => {
+			console.log("click", evt);
 		});
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		// Register an interval
+		this.registerInterval(
+			window.setInterval(() => console.log("setInterval"), 5 * 60 * 1000)
+		);
 	}
 
-	onunload() {
+	async handleSummarizeFile() {
+		const file = this.app.workspace.getActiveFile();
+		if (!file) {
+			new Notice("No active file found!");
+			return;
+		}
 
+		try {
+			const content = await this.app.vault.read(file);
+			const documentationContent = this.summarizeFile(content);
+
+			if (documentationContent.length > 0) {
+				new Notice(documentationContent);
+			} else {
+				new Notice("No Dokumentation section found in this file.");
+			}
+		} catch (err) {
+			new Notice("Error reading file: " + err.message);
+			console.error(err);
+		}
 	}
+
+	summarizeFile(content: string): string {
+		const lines = content.split("\n");
+		let inSection = false;
+		let sectionContent: string[] = [];
+
+		// Generate the correct heading prefix (e.g., "### Dokumentation" for HeadingLevel = 3)
+		const headingPrefix = `${"#".repeat(this.settings.HeadingLevel)} ${
+			this.settings.HeadingName
+		}`;
+
+		for (const line of lines) {
+			if (line.startsWith(headingPrefix)) {
+				inSection = true;
+				continue;
+			}
+
+			if (inSection) {
+				if (line.match(/^#+\s/)) break; // Stop at the next heading
+				sectionContent.push(line.trim());
+			}
+		}
+
+		return sectionContent.join("\n");
+	}
+
+	onunload() {}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData()
+		);
 	}
 
 	async saveSettings() {
@@ -157,12 +132,12 @@ class SampleModal extends Modal {
 	}
 
 	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
+		const { contentEl } = this;
+		contentEl.setText("Woah!");
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
@@ -176,19 +151,64 @@ class SampleSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+			.setName("Setting #1")
+			.setDesc("It's a secret")
+			.addText((text) =>
+				text
+					.setPlaceholder("Enter your secret")
+					.setValue(this.plugin.settings.secret)
+					.onChange(async (value) => {
+						this.plugin.settings.secret = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl).setName("Name of heading").addText((text) =>
+			text
+				.setPlaceholder("Dokumentation")
+				.setValue(this.plugin.settings.HeadingName)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.HeadingName = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+		);
+
+		new Setting(containerEl)
+			.setName("Level of heading")
+			.addSlider((slider) => {
+				const settingDiv = containerEl.createDiv({
+					cls: "slider-container",
+					attr: {
+						style: "display: flex; align-items: center; gap: 10px;",
+					},
+				});
+				const label = settingDiv.createEl("span", {
+					text: "Level of heading:",
+					cls: "slider-label",
+				});
+				const valueDisplay = settingDiv.createEl("span", {
+					text: ` ${this.plugin.settings.HeadingLevel}`,
+					cls: "slider-value",
+				});
+
+				slider
+					.setLimits(1, 6, 1)
+					.setValue(this.plugin.settings.HeadingLevel)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.HeadingLevel = value;
+						valueDisplay.setText(` ${value}`);
+						await this.plugin.saveSettings();
+					});
+
+				settingDiv.appendChild(label);
+				settingDiv.appendChild(slider.sliderEl);
+				settingDiv.appendChild(valueDisplay);
+			});
 	}
 }
