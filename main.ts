@@ -88,11 +88,12 @@ export default class MyPlugin extends Plugin {
 			const content = await this.app.vault.read(file);
 			const documentationContent = this.extractSection(content);
 
-			new Notice(
+			new SampleModal(
+				this.app,
 				documentationContent.length > 0
 					? documentationContent
 					: "No Dokumentation section found."
-			);
+			).open();
 		} catch (err) {
 			new Notice("Error reading file.");
 			console.error(err);
@@ -155,6 +156,34 @@ export default class MyPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 }
+
+class SampleModal extends Modal {
+	message: string;
+	prompt: string = "Fasse diesen Tag zusammen in ein bis drei Sätzen:\n\n\n";
+
+	constructor(app: App, message: string) {
+		super(app);
+		this.message = message;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		// Create a <pre> element to preserve formatting
+		const preEl = contentEl.createEl("pre");
+
+		// Set text properly, ensuring all line breaks in `prompt` are preserved
+		preEl.appendText(this.prompt);
+		preEl.appendText(this.message.replace(/\n{3,}/g, "\n\n"));
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
 
 // Settings Tab
 class SampleSettingTab extends PluginSettingTab {
