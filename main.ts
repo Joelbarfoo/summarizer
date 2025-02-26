@@ -7,14 +7,17 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	TFile,
 } from "obsidian";
 
+// Plugin Settings Interface
 interface MyPluginSettings {
 	secret: string;
 	HeadingLevel: number;
 	HeadingName: string;
 }
 
+// Default Plugin Settings
 const DEFAULT_SETTINGS: MyPluginSettings = {
 	secret: "default",
 	HeadingLevel: 1,
@@ -23,11 +26,22 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
+	statusBarItemEl: HTMLElement;
 
 	async onload() {
 		await this.loadSettings();
+		this.addRibbonButton();
+		this.createStatusBar();
+		this.registerCommands();
+		this.registerEvents();
+		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.registerInterval(
+			window.setInterval(() => this.updateStatusBar(), 1000)
+		);
+	}
 
-		// Create an icon in the left ribbon
+	// Add ribbon icon with a click handler
+	addRibbonButton() {
 		const ribbonIconEl = this.addRibbonIcon(
 			"pdf-file",
 			"Summarize current file",
@@ -36,76 +50,90 @@ export default class MyPlugin extends Plugin {
 			}
 		);
 		ribbonIconEl.addClass("my-plugin-ribbon-class");
+	}
 
-		// Add a status bar item
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText("Found a diary");
+	// Create the status bar element
+	createStatusBar() {
+		this.statusBarItemEl = this.addStatusBarItem();
+		this.updateStatusBar();
+	}
 
-		// Add a command to summarize the file
+	// Register plugin commands
+	registerCommands() {
 		this.addCommand({
 			id: "summarize-file",
 			name: "Summarize File",
-			callback: async () => {
-				await this.handleSummarizeFile();
-			},
+			callback: async () => await this.handleSummarizeFile(),
 		});
+	}
 
-		// Register settings tab
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// Register a global event listener
-		this.registerDomEvent(document, "click", (evt: MouseEvent) => {
-			console.log("click", evt);
-		});
-
-		// Register an interval
-		this.registerInterval(
-			window.setInterval(() => console.log("setInterval"), 5 * 60 * 1000)
+	// Register event listeners
+	registerEvents() {
+		this.registerEvent(
+			this.app.workspace.on("active-leaf-change", () =>
+				this.updateStatusBar()
+			)
+		);
+		this.registerEvent(
+			this.app.vault.on("modify", () => this.updateStatusBar())
 		);
 	}
 
+	// Summarize the active file
 	async handleSummarizeFile() {
 		const file = this.app.workspace.getActiveFile();
-		if (!file) {
-			new Notice("No active file found!");
-			return;
-		}
+		if (!file) return new Notice("No active file found!");
 
 		try {
 			const content = await this.app.vault.read(file);
-			const documentationContent = this.summarizeFile(content);
+			const documentationContent = this.extractSection(content);
 
-			if (documentationContent.length > 0) {
-				new Notice(documentationContent);
-			} else {
-				new Notice("No Dokumentation section found in this file.");
-			}
+			new Notice(
+				documentationContent.length > 0
+					? documentationContent
+					: "No Dokumentation section found."
+			);
 		} catch (err) {
-			new Notice("Error reading file: " + err.message);
+			new Notice("Error reading file.");
 			console.error(err);
 		}
 	}
 
-	summarizeFile(content: string): string {
+	// Update the status bar with the presence of the heading
+	async updateStatusBar() {
+		const file = this.app.workspace.getActiveFile();
+		if (!file) {
+			this.statusBarItemEl.setText("No active file");
+			return;
+		}
+
+		const content = await this.app.vault.read(file);
+		const hasHeading = this.extractSection(content).length > 0;
+		this.statusBarItemEl.setText(
+			hasHeading
+				? `Heading '${this.settings.HeadingName}' with Level ${this.settings.HeadingLevel} found`
+				: `Heading '${this.settings.HeadingName}' with Level ${this.settings.HeadingLevel} missing`
+		);
+	}
+
+	// Extract content under the specified heading
+	extractSection(content: string): string {
 		const lines = content.split("\n");
+		const heading = `${"#".repeat(this.settings.HeadingLevel)} ${
+			this.settings.HeadingName
+		}`;
+		const headingRegex = new RegExp(`^${heading}\\s*$`);
+
 		let inSection = false;
 		let sectionContent: string[] = [];
 
-		// Generate the correct heading prefix (e.g., "### Dokumentation" for HeadingLevel = 3)
-		const headingPrefix = `${"#".repeat(this.settings.HeadingLevel)} ${
-			this.settings.HeadingName
-		}`;
-
 		for (const line of lines) {
-			if (line.startsWith(headingPrefix)) {
+			if (headingRegex.test(line)) {
 				inSection = true;
 				continue;
 			}
-
-			if (inSection) {
-				if (line.match(/^#+\s/)) break; // Stop at the next heading
-				sectionContent.push(line.trim());
-			}
+			if (inSection && line.match(/^#+\s/)) break;
+			if (inSection) sectionContent.push(line.trim());
 		}
 
 		return sectionContent.join("\n");
@@ -113,6 +141,7 @@ export default class MyPlugin extends Plugin {
 
 	onunload() {}
 
+	// Load plugin settings
 	async loadSettings() {
 		this.settings = Object.assign(
 			{},
@@ -121,27 +150,13 @@ export default class MyPlugin extends Plugin {
 		);
 	}
 
+	// Save plugin settings
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText("Woah!");
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
-
+// Settings Tab
 class SampleSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
 
@@ -152,9 +167,9 @@ class SampleSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
-
 		containerEl.empty();
 
+		// Secret Setting
 		new Setting(containerEl)
 			.setName("Setting #1")
 			.setDesc("It's a secret")
@@ -168,6 +183,7 @@ class SampleSettingTab extends PluginSettingTab {
 					})
 			);
 
+		// Heading Name Setting
 		new Setting(containerEl).setName("Name of heading").addText((text) =>
 			text
 				.setPlaceholder("Dokumentation")
@@ -178,6 +194,7 @@ class SampleSettingTab extends PluginSettingTab {
 				})
 		);
 
+		// Heading Level Setting
 		new Setting(containerEl)
 			.setName("Level of heading")
 			.addSlider((slider) => {
@@ -186,10 +203,6 @@ class SampleSettingTab extends PluginSettingTab {
 					attr: {
 						style: "display: flex; align-items: center; gap: 10px;",
 					},
-				});
-				const label = settingDiv.createEl("span", {
-					text: "Level of heading:",
-					cls: "slider-label",
 				});
 				const valueDisplay = settingDiv.createEl("span", {
 					text: ` ${this.plugin.settings.HeadingLevel}`,
@@ -206,7 +219,6 @@ class SampleSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 
-				settingDiv.appendChild(label);
 				settingDiv.appendChild(slider.sliderEl);
 				settingDiv.appendChild(valueDisplay);
 			});
