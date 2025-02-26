@@ -200,8 +200,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		// Secret Setting
 		new Setting(containerEl)
-			.setName("Setting #1")
-			.setDesc("It's a secret")
+			.setName("ChatGPT secret")
 			.addText((text) =>
 				text
 					.setPlaceholder("Enter your secret")
