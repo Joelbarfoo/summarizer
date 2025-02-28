@@ -17,6 +17,8 @@ interface MyPluginSettings {
 	secret: string;
 	HeadingLevel: number;
 	HeadingName: string;
+	SummaryLevel: number;
+	SummaryName: string;
 }
 
 // Default Plugin Settings
@@ -24,6 +26,8 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	secret: "default",
 	HeadingLevel: 1,
 	HeadingName: "Dokumentation",
+	SummaryLevel: 1,
+	SummaryName: "Summary",
 };
 
 export default class MyPlugin extends Plugin {
@@ -106,6 +110,7 @@ export default class MyPlugin extends Plugin {
 				apiKey: this.settings.secret, // Falls API-Key benötigt wird, hier setzen.
 			});
 
+			/*
 			const chatCompletion = await client.chat.completions.create({
 				messages: [
 					{
@@ -118,14 +123,42 @@ export default class MyPlugin extends Plugin {
 				model: "gpt-4o",
 			});
 
+
+			*/
+
+			const chatCompletion =
+				"Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.";
+
+			const editor = this.app.workspace.activeEditor?.editor;
+			if (editor) {
+				const content = editor.getValue();
+				const lines = content.split("\n");
+
+				const index = lines.findIndex((line) =>
+					line.includes(
+						`${"#".repeat(this.settings.SummaryLevel)} ${
+							this.settings.SummaryName
+						}`
+					)
+				);
+				if (index !== -1) {
+					// Füge eine neue Zeile nach der gefundenen Zeile ein
+					lines.splice(index + 1, 0, chatCompletion);
+					editor.setValue(lines.join("\n"));
+				}
+			}
+
+			/*
 			if (chatCompletion && chatCompletion.choices.length > 0) {
-				new Notice(
+				this.app.workspace.activeEditor?.editor?.replaceRange(
 					chatCompletion.choices[0].message.content ??
-						"Keine Antwort erhalten"
+						"Keine Antwort erhalten", // Der einzufügende Text
+					{ line: 7, ch: 1 } // Position (Zeile 5, Zeichen 10)
 				);
 			} else {
 				new Notice("Keine Antwort von OpenAI erhalten.");
 			}
+			*/
 		} catch (err) {
 			new Notice("Error reading or processing file. Error: " + err);
 			console.error(err);
@@ -272,6 +305,46 @@ class SampleSettingTab extends PluginSettingTab {
 					.setDynamicTooltip()
 					.onChange(async (value) => {
 						this.plugin.settings.HeadingLevel = value;
+						valueDisplay.setText(` ${value}`);
+						await this.plugin.saveSettings();
+					});
+
+				settingDiv.appendChild(slider.sliderEl);
+				settingDiv.appendChild(valueDisplay);
+			});
+
+		// Summary Name Setting
+		new Setting(containerEl).setName("Name of summary").addText((text) =>
+			text
+				.setPlaceholder("Summary")
+				.setValue(this.plugin.settings.SummaryName)
+				.onChange(async (value) => {
+					this.plugin.settings.SummaryName = value;
+					await this.plugin.saveSettings();
+				})
+		);
+
+		// Summmary Level Setting
+		new Setting(containerEl)
+			.setName("Level of summary")
+			.addSlider((slider) => {
+				const settingDiv = containerEl.createDiv({
+					cls: "slider-container",
+					attr: {
+						style: "display: flex; align-items: center; gap: 10px;",
+					},
+				});
+				const valueDisplay = settingDiv.createEl("span", {
+					text: ` ${this.plugin.settings.HeadingLevel}`,
+					cls: "slider-value",
+				});
+
+				slider
+					.setLimits(1, 6, 1)
+					.setValue(this.plugin.settings.SummaryLevel)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.SummaryLevel = value;
 						valueDisplay.setText(` ${value}`);
 						await this.plugin.saveSettings();
 					});
