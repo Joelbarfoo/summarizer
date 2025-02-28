@@ -10,6 +10,8 @@ import {
 	TFile,
 } from "obsidian";
 
+import OpenAI from "openai";
+
 // Plugin Settings Interface
 interface MyPluginSettings {
 	secret: string;
@@ -88,14 +90,44 @@ export default class MyPlugin extends Plugin {
 			const content = await this.app.vault.read(file);
 			const documentationContent = this.extractSection(content);
 
-			new SampleModal(
-				this.app,
-				documentationContent.length > 0
-					? documentationContent
-					: "No Dokumentation section found."
-			).open();
+			if (!documentationContent) {
+				new Notice("No documentation section found.");
+				return;
+			}
+
+			new Notice(
+				"Extracted content: " +
+					documentationContent.substring(0, 100) +
+					"..."
+			);
+
+			const client = new OpenAI({
+				dangerouslyAllowBrowser: true,
+				apiKey: this.settings.secret, // Falls API-Key benötigt wird, hier setzen.
+			});
+
+			const chatCompletion = await client.chat.completions.create({
+				messages: [
+					{
+						role: "user",
+						content:
+							"Fasse diesen Text zusammen in ein bis drei Sätzen: \n\n\n" +
+							documentationContent,
+					},
+				],
+				model: "gpt-4o",
+			});
+
+			if (chatCompletion && chatCompletion.choices.length > 0) {
+				new Notice(
+					chatCompletion.choices[0].message.content ??
+						"Keine Antwort erhalten"
+				);
+			} else {
+				new Notice("Keine Antwort von OpenAI erhalten.");
+			}
 		} catch (err) {
-			new Notice("Error reading file.");
+			new Notice("Error reading or processing file. Error: " + err);
 			console.error(err);
 		}
 	}
@@ -184,7 +216,6 @@ class SampleModal extends Modal {
 	}
 }
 
-
 // Settings Tab
 class SampleSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
@@ -199,17 +230,15 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		// Secret Setting
-		new Setting(containerEl)
-			.setName("ChatGPT secret")
-			.addText((text) =>
-				text
-					.setPlaceholder("Enter your secret")
-					.setValue(this.plugin.settings.secret)
-					.onChange(async (value) => {
-						this.plugin.settings.secret = value;
-						await this.plugin.saveSettings();
-					})
-			);
+		new Setting(containerEl).setName("ChatGPT secret").addText((text) =>
+			text
+				.setPlaceholder("Enter your secret")
+				.setValue(this.plugin.settings.secret)
+				.onChange(async (value) => {
+					this.plugin.settings.secret = value;
+					await this.plugin.saveSettings();
+				})
+		);
 
 		// Heading Name Setting
 		new Setting(containerEl).setName("Name of heading").addText((text) =>
