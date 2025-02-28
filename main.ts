@@ -107,7 +107,7 @@ export default class MyPlugin extends Plugin {
 
 			const client = new OpenAI({
 				dangerouslyAllowBrowser: true,
-				apiKey: this.settings.secret, // Falls API-Key benötigt wird, hier setzen.
+				apiKey: this.settings.secret,
 			});
 
 			/*
@@ -122,10 +122,7 @@ export default class MyPlugin extends Plugin {
 				],
 				model: "gpt-4o",
 			});
-
-
 			*/
-
 			const chatCompletion =
 				"Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.";
 
@@ -150,11 +147,7 @@ export default class MyPlugin extends Plugin {
 
 			/*
 			if (chatCompletion && chatCompletion.choices.length > 0) {
-				this.app.workspace.activeEditor?.editor?.replaceRange(
-					chatCompletion.choices[0].message.content ??
-						"Keine Antwort erhalten", // Der einzufügende Text
-					{ line: 7, ch: 1 } // Position (Zeile 5, Zeichen 10)
-				);
+				//hier einfügen!
 			} else {
 				new Notice("Keine Antwort von OpenAI erhalten.");
 			}
