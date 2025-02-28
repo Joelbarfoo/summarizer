@@ -110,7 +110,7 @@ export default class MyPlugin extends Plugin {
 				apiKey: this.settings.secret,
 			});
 
-			/*
+			
 			const chatCompletion = await client.chat.completions.create({
 				messages: [
 					{
@@ -122,36 +122,30 @@ export default class MyPlugin extends Plugin {
 				],
 				model: "gpt-4o",
 			});
-			*/
-			const chatCompletion =
-				"Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.";
-
-			const editor = this.app.workspace.activeEditor?.editor;
-			if (editor) {
-				const content = editor.getValue();
-				const lines = content.split("\n");
-
-				const index = lines.findIndex((line) =>
-					line.includes(
-						`${"#".repeat(this.settings.SummaryLevel)} ${
-							this.settings.SummaryName
-						}`
-					)
-				);
-				if (index !== -1) {
-					// Füge eine neue Zeile nach der gefundenen Zeile ein
-					lines.splice(index + 1, 0, chatCompletion);
-					editor.setValue(lines.join("\n"));
-				}
-			}
-
-			/*
+			
+			
 			if (chatCompletion && chatCompletion.choices.length > 0) {
-				//hier einfügen!
+				const editor = this.app.workspace.activeEditor?.editor;
+				if (editor) {
+					const content = editor.getValue();
+					const lines = content.split("\n");
+
+					const index = lines.findIndex((line) =>
+						line.includes(
+							`${"#".repeat(this.settings.SummaryLevel)} ${
+								this.settings.SummaryName
+							}`
+						)
+					);
+					if (index !== -1) {
+						// Füge eine neue Zeile nach der gefundenen Zeile ein
+						lines.splice(index + 1, 0, chatCompletion.choices[0].message.content ?? "Keine Antwort erhalten");
+						editor.setValue(lines.join("\n"));
+					}
+				}
 			} else {
 				new Notice("Keine Antwort von OpenAI erhalten.");
 			}
-			*/
 		} catch (err) {
 			new Notice("Error reading or processing file. Error: " + err);
 			console.error(err);
