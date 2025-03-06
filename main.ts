@@ -31,8 +31,11 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 };
 
 class SetupModal extends Modal {
-    constructor(app: App) {
+    plugin: MyPlugin;
+
+    constructor(app: App, plugin: MyPlugin) {
         super(app);
+        this.plugin = plugin;
     }
 
     onOpen() {
@@ -44,8 +47,16 @@ class SetupModal extends Modal {
 
         let submitBtn = contentEl.createEl("button", { text: "Save" });
 		submitBtn.style.marginLeft = "10px"; 
-        submitBtn.addEventListener("click", () => {
-            console.log("User entered:", input.value);
+        submitBtn.addEventListener("click", async () => {
+            if (input.value.trim() === "") {
+                new Notice("API Key cannot be empty!");
+                return;
+            }
+
+            this.plugin.settings.secret = input.value;
+            await this.plugin.saveSettings();
+
+            new Notice("API Key saved!");
             this.close();
         });
     }
@@ -63,10 +74,10 @@ export default class MyPlugin extends Plugin {
 	async onload() {
         const data = await this.loadData();
         if (!data || !data.setupCompleted) {
-            new SetupModal(this.app).open();
-            await this.saveData({ setupCompleted: true }); // Save that setup was completed
+            new SetupModal(this.app, this).open();
+            await this.saveData({ setupCompleted: true });
         }
-		
+
 		await this.loadSettings();
 		this.addRibbonButton();
 		this.createStatusBar();
