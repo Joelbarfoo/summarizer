@@ -30,11 +30,43 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	SummaryName: "Summary",
 };
 
+class SetupModal extends Modal {
+    constructor(app: App) {
+        super(app);
+    }
+
+    onOpen() {
+        let { contentEl } = this;
+        contentEl.createEl("h2", { text: "Welcome to Chat GPT Summarizer Plugin!" });
+        contentEl.createEl("p", { text: "Please enter your Chat GPT API Key" });
+
+        let input = contentEl.createEl("input", { type: "text", placeholder: "Enter here" });
+
+        let submitBtn = contentEl.createEl("button", { text: "Save" });
+		submitBtn.style.marginLeft = "10px"; 
+        submitBtn.addEventListener("click", () => {
+            console.log("User entered:", input.value);
+            this.close();
+        });
+    }
+
+    onClose() {
+        let { contentEl } = this;
+        contentEl.empty();
+    }
+}
+
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 	statusBarItemEl: HTMLElement;
 
 	async onload() {
+        const data = await this.loadData();
+        if (!data || !data.setupCompleted) {
+            new SetupModal(this.app).open();
+            await this.saveData({ setupCompleted: true }); // Save that setup was completed
+        }
+		
 		await this.loadSettings();
 		this.addRibbonButton();
 		this.createStatusBar();
