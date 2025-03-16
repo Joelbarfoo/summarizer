@@ -12,3 +12,13 @@ summary after the header "Summary" at level 1.
 
 This is how it works by default. You can change both header names in the settings.
 You can also change the level of the headings in the settings.
+
+## To be noted
+All the information you want to summarize will be send to ChatGPT.
+We can't really know what ChatGPT does with the data.
+You find the privacy-policy of ChatGPT here: https://openai.com/policies/row-privacy-policy/
+Only summarize data that you are fine with to be send away to ChatGPT.
+
+You need to create your own API Key for ChatGPT.
+You can do so here: https://openai.com/index/openai-api/
+The API Key costs money.
