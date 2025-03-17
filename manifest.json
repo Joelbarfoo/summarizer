@@ -1,11 +1,10 @@
 {
-	"id": "summarizer-plugin",
-	"name": "Summarizer Plugin",
-	"version": "1.0.0",
+	"id": "chat-gpt-summarizer",
+	"name": "Chat GPT Summarizer",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Summarize your notes in the current document with a click of a button.",
 	"author": "Tim and Joel",
 	"authorUrl": "https://github.com/Joelbarfoo",
-	"fundingUrl": "https://obsidian.md/pricing",
 	"isDesktopOnly": true
 }
