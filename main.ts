@@ -1,19 +1,16 @@
 import {
 	App,
-	Editor,
-	MarkdownView,
 	Modal,
 	Notice,
 	Plugin,
 	PluginSettingTab,
 	Setting,
-	TFile,
 } from "obsidian";
 
 import OpenAI from "openai";
 
 // Plugin Settings Interface
-interface MyPluginSettings {
+interface SummarizerSettings {
 	secret: string;
 	HeadingLevel: number;
 	HeadingName: string;
@@ -22,7 +19,7 @@ interface MyPluginSettings {
 }
 
 // Default Plugin Settings
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: SummarizerSettings = {
 	secret: "default",
 	HeadingLevel: 1,
 	HeadingName: "Dokumentation",
@@ -30,60 +27,67 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	SummaryName: "Summary",
 };
 
-class SetupModal extends Modal {
-    plugin: MyPlugin;
+class SummarizerSetupModal extends Modal {
+	plugin: SummarizerPlugin;
 
-    constructor(app: App, plugin: MyPlugin) {
-        super(app);
-        this.plugin = plugin;
-    }
+	constructor(app: App, plugin: SummarizerPlugin) {
+		super(app);
+		this.plugin = plugin;
+	}
 
-    onOpen() {
-        let { contentEl } = this;
-        contentEl.createEl("h2", { text: "Welcome to Chat GPT Summarizer Plugin!" });
-        contentEl.createEl("p", { text: "Please enter your Chat GPT API Key" });
+	onOpen() {
+		let { contentEl } = this;
+		contentEl.createEl("h2", {
+			text: "Welcome to Chat GPT Summarizer Plugin!",
+		});
+		contentEl.createEl("p", { text: "Please enter your Chat GPT API Key" });
 
-        let input = contentEl.createEl("input", { type: "text", placeholder: "Enter here" });
+		let input = contentEl.createEl("input", {
+			type: "text",
+			placeholder: "Enter here",
+		});
 
-        let submitBtn = contentEl.createEl("button", { text: "Save" });
-		submitBtn.style.marginLeft = "10px"; 
-        submitBtn.addEventListener("click", async () => {
-            if (input.value.trim() === "") {
-                new Notice("API Key cannot be empty!");
-                return;
-            }
+		let submitBtn = contentEl.createEl("button", {
+			text: "Save",
+			cls: "chatgpt-submit-btn",
+		});
+		submitBtn.addEventListener("click", async () => {
+			if (input.value.trim() === "") {
+				new Notice("API Key cannot be empty!");
+				return;
+			}
 
-            this.plugin.settings.secret = input.value;
-            await this.plugin.saveSettings();
+			this.plugin.settings.secret = input.value;
+			await this.plugin.saveSettings();
 
-            new Notice("API Key saved!");
-            this.close();
-        });
-    }
+			new Notice("API Key saved!");
+			this.close();
+		});
+	}
 
-    onClose() {
-        let { contentEl } = this;
-        contentEl.empty();
-    }
+	onClose() {
+		let { contentEl } = this;
+		contentEl.empty();
+	}
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class SummarizerPlugin extends Plugin {
+	settings: SummarizerSettings;
 	statusBarItemEl: HTMLElement;
 
 	async onload() {
-        const data = await this.loadData();
-        if (!data || !data.setupCompleted) {
-            new SetupModal(this.app, this).open();
-            await this.saveData({ setupCompleted: true });
-        }
+		const data = await this.loadData();
+		if (!data || !data.setupCompleted) {
+			new SummarizerSetupModal(this.app, this).open();
+			await this.saveData({ setupCompleted: true });
+		}
 
 		await this.loadSettings();
 		this.addRibbonButton();
 		this.createStatusBar();
 		this.registerCommands();
 		this.registerEvents();
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new SummarizerSettingsTab(this.app, this));
 		this.registerInterval(
 			window.setInterval(() => this.updateStatusBar(), 1000)
 		);
@@ -153,7 +157,6 @@ export default class MyPlugin extends Plugin {
 				apiKey: this.settings.secret,
 			});
 
-			
 			const chatCompletion = await client.chat.completions.create({
 				messages: [
 					{
@@ -165,8 +168,7 @@ export default class MyPlugin extends Plugin {
 				],
 				model: "gpt-4o",
 			});
-			
-			
+
 			if (chatCompletion && chatCompletion.choices.length > 0) {
 				const editor = this.app.workspace.activeEditor?.editor;
 				if (editor) {
@@ -182,7 +184,12 @@ export default class MyPlugin extends Plugin {
 					);
 					if (index !== -1) {
 						// Füge eine neue Zeile nach der gefundenen Zeile ein
-						lines.splice(index + 1, 0, chatCompletion.choices[0].message.content ?? "Keine Antwort erhalten");
+						lines.splice(
+							index + 1,
+							0,
+							chatCompletion.choices[0].message.content ??
+								"Keine Antwort erhalten"
+						);
 						editor.setValue(lines.join("\n"));
 					}
 				}
@@ -252,38 +259,11 @@ export default class MyPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
-	message: string;
-	prompt: string = "Fasse diesen Tag zusammen in ein bis drei Sätzen:\n\n\n";
-
-	constructor(app: App, message: string) {
-		super(app);
-		this.message = message;
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.empty();
-
-		// Create a <pre> element to preserve formatting
-		const preEl = contentEl.createEl("pre");
-
-		// Set text properly, ensuring all line breaks in `prompt` are preserved
-		preEl.appendText(this.prompt);
-		preEl.appendText(this.message.replace(/\n{3,}/g, "\n\n"));
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
-
 // Settings Tab
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class SummarizerSettingsTab extends PluginSettingTab {
+	plugin: SummarizerPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: SummarizerPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}

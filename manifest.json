@@ -6,5 +6,6 @@
 	"description": "Summarize your notes in the current document with a click of a button.",
 	"author": "Tim and Joel",
 	"authorUrl": "https://github.com/Joelbarfoo",
-	"isDesktopOnly": true
+	"isDesktopOnly": true,
+	"css": "styles.css"
 }
